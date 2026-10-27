@@ -156,10 +156,18 @@ pub async fn execute(app: Arc<App>, cell_ids: Vec<String>) {
         if let Some(run) = guard.as_mut() {
             run.state = RunState::Running;
             run.finished_at = None;
+            // Nyt forsøg starter rent (også ved "Prøv igen" og "Genoptag").
             for i in run.items.iter_mut().filter(|i| cell_ids.contains(&i.cell_id)) {
                 i.state = ItemState::Pending;
                 i.step = "Venter".into();
                 i.error = None;
+                i.before = None;
+                i.after = None;
+                i.clicks = 0;
+                i.attempts = 0;
+                i.progress = None;
+                i.sync = SyncState::None;
+                i.sync_error = None;
             }
         }
     }
@@ -226,6 +234,7 @@ async fn process_item(app: &Arc<App>, cell_id: &str, settings: &Settings) {
     for attempt in 1..=max_attempts {
         app.update_item(cell_id, |i| {
             i.state = ItemState::Running;
+            i.after = None;
             i.attempts = i.attempts.saturating_add(1);
             i.error = None;
             i.step = "Starter".into();
@@ -401,7 +410,8 @@ impl Exec {
             .map_err(|e| {
                 let msg = e.to_string();
                 // Forbindelsesproblemer kan prøves igen; resten stopper.
-                if msg.contains("Forbindelsen") || msg.contains("stoppede") || msg.contains("Smidt ud") {
+                let retry = ["Forbindelsen", "stoppede", "Smidt ud", "ikke logget ind"];
+                if retry.iter().any(|r| msg.contains(r)) {
                     Fail::Retry(msg)
                 } else {
                     Fail::Stop(msg)
@@ -610,7 +620,9 @@ impl Exec {
         }
         let info = info.clone();
         self.app.update_item(&self.cell_id, |i| match slot {
-            Slot::Before => i.before = Some(info),
+            // "Før" er altid den allerførste aflæsning i kørslen.
+            Slot::Before if i.before.is_none() => i.before = Some(info),
+            Slot::Before => {}
             Slot::After => i.after = Some(info),
             Slot::Auto if i.before.is_none() => i.before = Some(info),
             Slot::Auto => i.after = Some(info),

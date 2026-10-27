@@ -128,9 +128,13 @@ async fn login_account(app: AppState<'_>, account_id: Option<String>) -> Res<Vie
     .await;
     sc.kill().await;
     drop(sc);
-    app.login.lock().await.take();
+    // cancel_login har allerede taget sidecaren, hvis brugeren annullerede.
+    let cancelled = app.login.lock().await.take().is_none();
     let _ = tokio::time::timeout(Duration::from_secs(5), pump).await;
     let _ = app.handle.emit("msa-code-done", json!({}));
+    if cancelled {
+        return Err("Login annulleret".into());
+    }
 
     let profile: Profile = serde_json::from_value(result.map_err(|e| format!("Login fejlede: {e}"))?).map_err(err)?;
     let tokens = std::mem::take(&mut *collected.lock().unwrap());
