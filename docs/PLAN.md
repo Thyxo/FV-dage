@@ -1,7 +1,6 @@
 # CellKeeper – research og plan
 
-Status: **Fase 0 + Fase 1 færdig, åbne spørgsmål besvaret.
-Venter på "ja" til Fase 2.**
+Status: **Fase 0-5 implementeret (2026-10-27).** Brugeren tester manuelt.
 
 ---
 
@@ -69,12 +68,14 @@ kan afvise dem. Så tilbyder appen et hurtigt re-login (kode + link, ~30 sek).
 5. Ja til API-nøgle. Celler i appen og i cell-manager skal være **linket**,
    så de ikke overskriver hinanden. → Se "Kobling til cell-manager".
 
-## Stadig åbent (blokerer ikke Fase 2)
+## Afklaret senere
 
-- Et rigtigt `/ce info`-svar (hele chatlinjen). Indtil da: parseren tager
-  tallet foran "dag/dage" og viser rå tekst, så du kan bekræfte første gang.
-- Accounts med 2 celler (fx CokeBums: `a1615` + `fc77`): kan begge skilte
-  nås fra samme sted? Ellers kan appen kun forny den ene automatisk.
+- `/ce info`-format (modtaget): overskrift `------------={ a142 }=------------`,
+  derefter `Ejer:`, `Blok:`, `Tid: 7 dage, 20 timer, 20 minutter`, `Medlemmer:`.
+  Hver linje er en separat chatbesked. Parseren matcher overskriften med
+  cellenavnet og læser "Tid".
+- Accounts med 2 celler: ikke vigtigt (brugerens svar). Hver celle køres
+  for sig med sin account.
 
 ---
 

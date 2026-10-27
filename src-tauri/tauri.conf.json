@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CellKeeper",
+  "version": "0.1.0",
+  "identifier": "dk.thyxo.cellkeeper",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "CellKeeper",
+        "width": 1040,
+        "height": 740,
+        "minWidth": 360,
+        "minHeight": 480,
+        "backgroundColor": "#141413"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' https://mc-heads.net data:; style-src 'self'; script-src 'self'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "category": "Utility",
+    "shortDescription": "Forny celledage på FreakyVille",
+    "externalBin": ["binaries/cellkeeper-sidecar"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Danish"]
+      }
+    }
+  }
+}

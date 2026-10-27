@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CellKeeper</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="icon.png" alt="" width="24" height="24"><span>CellKeeper</span></div>
+    <button class="mgr" id="mgr" title="Hent celler fra cell-manager igen"><span class="dot"></span><span id="mgr-text">cell-manager</span></button>
+    <button class="icon-btn" id="btn-settings" title="Indstillinger" aria-label="Indstillinger">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    </button>
+  </header>
+
+  <div id="notice" class="notice is-hidden"><span id="notice-text"></span><button class="link" id="notice-close">Luk</button></div>
+  <div id="resume" class="notice warn is-hidden"><span id="resume-text"></span><button class="btn small" id="btn-resume">Genoptag</button></div>
+
+  <section class="runbar">
+    <div class="runbar-left">
+      <select id="acct-filter" aria-label="Vælg account"></select>
+      <span class="hint" id="run-hint"></span>
+    </div>
+    <button class="btn primary big" id="btn-run">Tilføj dage</button>
+    <button class="btn danger big is-hidden" id="btn-stop">Stop</button>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="cells">Celler</button>
+    <button class="tab" data-tab="accounts">Accounts</button>
+    <button class="tab tab-run" data-tab="run">Kørsel <span id="run-badge" class="count is-hidden"></span></button>
+  </nav>
+
+  <main class="layout">
+    <section id="panel-cells" class="panel">
+      <div class="panel-head">
+        <div class="select-links">
+          <button class="link" id="sel-all">Vælg alle</button> ·
+          <button class="link" id="sel-none">Ingen</button> ·
+          <button class="link" id="sel-low">Kun dem der mangler dage</button>
+        </div>
+        <button class="btn small ghost" id="btn-add-cell">+ Lokal celle</button>
+      </div>
+      <div id="cells" class="list"></div>
+    </section>
+
+    <section id="panel-accounts" class="panel is-hidden">
+      <div class="panel-head">
+        <p class="note">Husk: accounten skal være logget ud af Minecraft og stå inde i sin celle tæt på skiltet, når den logger ud.</p>
+        <button class="btn" id="btn-add-account">+ Tilføj account</button>
+      </div>
+      <div id="accounts" class="list"></div>
+    </section>
+
+    <section id="panel-run" class="panel run-panel is-hidden">
+      <div class="panel-head">
+        <strong id="run-title">Ingen kørsel endnu</strong>
+        <button class="btn small ghost is-hidden" id="btn-retry-failed">Prøv fejlede igen</button>
+      </div>
+      <div id="run-items" class="list"></div>
+      <div class="log-head"><span>Live-log</span><button class="link" id="log-clear">Ryd</button></div>
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast is-hidden"></div>
+
+  <!-- Login -->
+  <dialog id="dlg-login">
+    <h2 id="login-title">Tilføj account</h2>
+    <div id="login-intro">
+      <p>Du logger ind med Microsoft i din browser. Appen ser aldrig din adgangskode.</p>
+      <p class="note">Husk: accounten skal være logget ud af Minecraft og stå inde i sin celle tæt på skiltet.</p>
+    </div>
+    <div id="login-code" class="is-hidden">
+      <p id="login-code-text">Gå til siden og skriv koden:</p>
+      <div class="code" id="code"></div>
+      <div class="row">
+        <button class="btn" id="btn-copy-code">Kopiér kode</button>
+        <button class="btn primary" id="btn-open-link">Åbn microsoft.com/link</button>
+      </div>
+      <p class="hint"><span class="spinner"></span> Venter på at du logger ind …</p>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="btn-login-cancel">Annullér</button>
+      <button class="btn primary" id="btn-login-start">Start login</button>
+    </div>
+  </dialog>
+
+  <!-- Redigér account -->
+  <dialog id="dlg-account">
+    <h2 id="acct-title">Account</h2>
+    <label class="field">Kaldenavn (valgfrit)<input id="acct-label" maxlength="40"></label>
+    <label class="check"><input type="checkbox" id="acct-enabled"> Aktiv (med i "Tilføj dage")</label>
+    <label class="field">Join-makro for denne account
+      <textarea id="acct-join" rows="5" spellcheck="false" placeholder="Tom = brug den globale join-makro"></textarea>
+    </label>
+    <div class="macro-errors" id="acct-join-errors"></div>
+    <div class="dlg-actions">
+      <button class="btn danger ghost" id="btn-acct-remove">Fjern account</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="btn-acct-cancel">Annullér</button>
+      <button class="btn primary" id="btn-acct-save">Gem</button>
+    </div>
+  </dialog>
+
+  <!-- Lokal celle -->
+  <dialog id="dlg-cell">
+    <h2>Lokal celle</h2>
+    <p class="hint">Til celler der ikke er i cell-manager. Lokale celler sendes aldrig til cell-manager.</p>
+    <label class="field">Cellenavn<input id="cell-name" placeholder="fx a142"></label>
+    <label class="field">Minecraft-account<input id="cell-account" list="account-names" placeholder="fx Thyxo"></label>
+    <datalist id="account-names"></datalist>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="btn-cell-cancel">Annullér</button>
+      <button class="btn primary" id="btn-cell-save">Tilføj</button>
+    </div>
+  </dialog>
+
+  <!-- Log for én celle -->
+  <dialog id="dlg-log" class="wide">
+    <h2 id="itemlog-title">Log</h2>
+    <div id="itemlog" class="log tall"></div>
+    <div class="dlg-actions"><button class="btn" id="btn-itemlog-close">Luk</button></div>
+  </dialog>
+
+  <!-- Eksport / import -->
+  <dialog id="dlg-transfer">
+    <h2 id="transfer-title">Flyt accounts</h2>
+    <p class="hint" id="transfer-hint"></p>
+    <label class="field">Kodeord<input type="password" id="transfer-pw" autocomplete="new-password"></label>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="btn-transfer-cancel">Annullér</button>
+      <button class="btn primary" id="btn-transfer-go">Fortsæt</button>
+    </div>
+  </dialog>
+
+  <!-- Indstillinger -->
+  <dialog id="dlg-settings" class="wide">
+    <h2>Indstillinger</h2>
+    <div class="settings">
+      <fieldset>
+        <legend>Fornyelse</legend>
+        <label class="field">Fuld celle (dage)<input type="number" min="1" max="9" data-key="maxDays"></label>
+        <label class="field">Pause mellem klik (ms)<input type="number" min="0" data-key="clickDelayMs"></label>
+        <label class="field">Tilfældig variation pr. klik (ms)<input type="number" min="0" data-key="clickJitterMs"></label>
+        <label class="field">Maks. afstand til skilt (blokke)<input type="number" min="1" max="128" data-key="maxDistance"></label>
+        <label class="field">Maks. klik-runder<input type="number" min="1" max="10" data-key="fillRounds"></label>
+        <p class="hint full">Serveren afviser normalt klik længere væk end ca. 8 blokke. Skiltet vælges ud fra afstand, så det må gerne være bag en væg.</p>
+      </fieldset>
+      <fieldset>
+        <legend>Tempo</legend>
+        <label class="field">Accounts på én gang<input type="number" min="1" max="8" data-key="maxParallel"></label>
+        <label class="field">Pause mellem logins (ms)<input type="number" min="0" data-key="loginGapMs"></label>
+        <label class="field">Tilfældig ekstra pause (ms)<input type="number" min="0" data-key="loginJitterMs"></label>
+        <label class="field">Automatiske genforsøg<input type="number" min="0" max="5" data-key="retries"></label>
+        <label class="field">Login-timeout (ms)<input type="number" min="1000" max="120000" data-key="joinTimeoutMs"></label>
+        <label class="field">Chat-timeout (ms)<input type="number" min="500" max="120000" data-key="chatTimeoutMs"></label>
+      </fieldset>
+      <fieldset>
+        <legend>cell-manager</legend>
+        <label class="field full">Adresse<input data-key="managerUrl" placeholder="https://…"></label>
+        <label class="field full">API-nøgle<input type="password" id="api-key" autocomplete="off"></label>
+        <label class="check full"><input type="checkbox" data-key="autoSync"> Opdatér cell-manager automatisk efter verificeret køb</label>
+        <div class="row full"><button class="btn small" id="btn-test-mgr">Test forbindelse</button><span class="hint" id="test-mgr-result"></span></div>
+      </fieldset>
+      <fieldset>
+        <legend>Server</legend>
+        <label class="field">Adresse<input data-key="host"></label>
+        <label class="field">Port<input type="number" data-key="port"></label>
+        <label class="field">Version<input data-key="version"></label>
+      </fieldset>
+      <fieldset class="span">
+        <legend>Makroer</legend>
+        <label class="field full">Join-makro (standard for alle accounts)
+          <textarea rows="5" spellcheck="false" data-key="joinMacro"></textarea>
+        </label>
+        <div class="macro-errors full" data-errors="joinMacro"></div>
+        <label class="field full">Fornyelses-makro (køres pr. celle)
+          <textarea rows="7" spellcheck="false" data-key="renewMacro"></textarea>
+        </label>
+        <div class="macro-errors full" data-errors="renewMacro"></div>
+        <details class="full">
+          <summary>Kommandoer</summary>
+          <p class="hint mono">start · waitjoin ms · joinmacro · wait ms · chat tekst · hotbar 1-9 · use · deactivate · swing · drop · click slot [knap] [mode] · forward/back/left/right/jump/sneak/sprint ms · stopmove · sign [klik] [ms] [afstand] · checkchat [ms] kommando · validatechat contains tekst | regex mønster · <b>ceinfo [mål]</b> · <b>fyldop [runder]</b></p>
+          <p class="hint">Variabler: {celle} {konto} {max} {antal} (dage der mangler ifølge seneste /ce info). <b>fyldop</b> læser /ce info, klikker det der mangler og tjekker igen.</p>
+        </details>
+        <div class="row full"><button class="btn small ghost" id="btn-reset-macros">Nulstil makroer til standard</button></div>
+      </fieldset>
+      <fieldset class="span">
+        <legend>Flyt til anden PC</legend>
+        <p class="hint full">Én krypteret fil med accounts og logins. Kodeordet bruges til at låse filen op igen. Filen bliver aldrig uploadet.</p>
+        <div class="row full">
+          <button class="btn" id="btn-export">Eksportér accounts</button>
+          <button class="btn" id="btn-import">Importér accounts</button>
+        </div>
+        <p class="hint full" id="data-dir"></p>
+      </fieldset>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="btn-settings-cancel">Annullér</button>
+      <button class="btn primary" id="btn-settings-save">Gem</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

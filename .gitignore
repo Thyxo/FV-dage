@@ -18,3 +18,4 @@ sidecar/build/
 src-tauri/binaries/
 *.log
 .DS_Store
+src-tauri/gen/
