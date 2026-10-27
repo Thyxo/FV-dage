@@ -163,6 +163,8 @@ function cmdConnect (args) {
         onMsaCode(resp)
       },
       hideErrors: true,
+      // 1.8.9 har ingen chat-signering: spar opkaldet efter certifikater.
+      disableChatSigning: true,
       physicsEnabled: true
     })
 
