@@ -1,6 +1,7 @@
 # CellKeeper – research og plan
 
-Status: **Fase 0 + Fase 1 færdig. Venter på godkendelse før kodning.**
+Status: **Fase 0 + Fase 1 færdig, åbne spørgsmål besvaret.
+Venter på "ja" til Fase 2.**
 
 ---
 
@@ -54,15 +55,26 @@ kan afvise dem. Så tilbyder appen et hurtigt re-login (kode + link, ~30 sek).
 - **Node SEA (Node 22): virker, native kryptering. Valgt.**
   Forventet ca. 85 MB på Windows, ca. 30-40 MB i komprimeret installer.
 
-## Åbne spørgsmål (blokerer standardværdier i Fase 2)
+## Afklaret med brugeren (2026-10-27)
 
-1. Eksempel på et `/ce info <celle>`-svar (kopiér fra chatten).
-   Står cellenavnet i svaret? Hvad betyder "30"?
-2. Hvor mange klik = 9 dage? Kommer der en chatbesked pr. klik?
-3. Står hver account parkeret ved sit eget skilt, når den logger ud?
-   (Noten "må ikke stå tæt på cellen" – betyder det inde *i* cellen?)
-4. Skal ejer-accounten selv klikke, eller kan én account forny alle?
-5. Må cell-manager få en simpel API-nøgle?
+1. `/ce info <account>` og `/ce info <celle>` giver samme svar.
+   → Appen bruger cellenavnet (unikt), med account-navn som reserve.
+2. 9 klik = 9 dage fra 0. Der kommer (sandsynligvis) en chatbesked pr. klik.
+   Alle dage skal med. → "Fyld op"-flow, se nedenfor.
+3. Accounts står **inde i cellen, tæt på skiltet**, når de logger ud.
+   Skiltet er altså typisk bag en væg → "gennem væggen" er kernen.
+   Noten rettes til: *"Accounten skal være logget ud af Minecraft og skal
+   være logget ud stående inde i sin celle tæt på skiltet."*
+4. Ejer-accounten klikker selv. → Ét flow pr. account.
+5. Ja til API-nøgle. Celler i appen og i cell-manager skal være **linket**,
+   så de ikke overskriver hinanden. → Se "Kobling til cell-manager".
+
+## Stadig åbent (blokerer ikke Fase 2)
+
+- Et rigtigt `/ce info`-svar (hele chatlinjen). Indtil da: parseren tager
+  tallet foran "dag/dage" og viser rå tekst, så du kan bekræfte første gang.
+- Accounts med 2 celler (fx CokeBums: `a1615` + `fc77`): kan begge skilte
+  nås fra samme sted? Ellers kan appen kun forny den ene automatisk.
 
 ---
 
@@ -129,15 +141,22 @@ Windows Job Object med "kill on close" → dør også hvis appen crasher.
   ignorerer andet, timeout + retry (standard 2 forsøg).
 - `joinmacro` = redigerbar tekstboks pr. account, med global default.
 
-### "Tilføj dage" – trin pr. account
+### "Tilføj dage" – trin pr. account ("fyld op")
 
 ```
-1 Start sidecar  →  2 login + waitjoin
-3 joinmacro      →  4 sign (N klik)
-5 /ce info <celle> for hver celle  →  6 parse + tjek
+1 Start sidecar   →  2 login + waitjoin
+3 joinmacro
+4 /ce info <celle>   → nu = fx 3 dage
+5 klik (9 − nu) gange, tæl kvitteringer i chat
+6 /ce info <celle>   → er den 9?
+   nej → klik forskellen igen (maks 2 runder)
+   stadig nej → rød advarsel med faktisk antal
 7 logout (altid, også ved fejl)
-8 PATCH cell-manager (kun verificerede celler)
+8 cell-manager opdateres (kun verificeret værdi)
 ```
+
+Fordele: ingen klik for meget (spild af penge), og appen stopper først,
+når `/ce info` bekræfter 9 dage. Maks-dage (9) er en indstilling.
 
 Hvert trin skrives til `runs/<id>.json` før og efter. Efter crash viser
 appen "Ufærdig kørsel" med knap til at genoptage pr. account eller celle.
@@ -149,6 +168,21 @@ appen "Ufærdig kørsel" med knap til at genoptage pr. account eller celle.
   Default `maxDistance` foreslås derfor 8 (i stedet for 16), og appen
   advarer hvis skiltet er >6 blokke væk.
 - Klik giver ingen kvittering fra serveren. Kun `/ce info` beviser købet.
+
+### Kobling til cell-manager (så de ikke overskriver hinanden)
+
+Hvert felt ejes af ét system:
+
+- **cell-manager ejer:** cellenavn, account, rank, block, Discord-bruger.
+  Appen henter dem og ændrer dem aldrig.
+- **Spillet ejer dage:** appen skriver kun `daysLeft`, og kun en værdi den
+  lige har læst med `/ce info`. Aldrig en gammel lokal værdi.
+- **Appen ejer lokalt:** makroer, skilt-indstillinger, tokens.
+
+Linket gemmes som cell-managers `_id` (overlever omdøbning) + cellenavn.
+Celler oprettes i cell-manager (dashboard/Discord), appen importerer dem.
+Celler der kun findes lokalt vises som "ikke linket" og sendes aldrig.
+Visning af dage i appen kommer altid fra cell-manager (live).
 
 ### Mappestruktur
 
@@ -214,7 +248,7 @@ FV-dage/
 ## Cell-manager – forslag (implementeres ikke uden ok)
 
 1. **API-nøgle** på POST/PUT/PATCH/DELETE (`x-api-key`, env `API_KEY`).
-   Vigtigst: URL'en står i et offentligt repo.
+   Vigtigst: URL'en står i et offentligt repo. **Godkendt af brugeren.**
 2. **Felter** `lastRenewedAt` + `verifiedAt` (sættes når CellKeeper
    opdaterer). Dashboardet viser "Fornyet for 3 t siden ✓".
 3. **Batch** `PATCH /api/cells/days` med liste → én socket-emit i stedet for
