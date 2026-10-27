@@ -1,0 +1,20 @@
+# Account-data og tokens må ALDRIG committes
+accounts.json
+*.cellkeeper
+vault.bin
+state.json
+runs/
+nmp-cache/
+*-cache.json
+.env
+.env.*
+!.env.example
+
+# Build
+node_modules/
+target/
+dist/
+sidecar/build/
+src-tauri/binaries/
+*.log
+.DS_Store
