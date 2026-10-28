@@ -66,13 +66,17 @@ pub struct Settings {
     pub host: String,
     pub port: u16,
     pub version: String,
-    /// Fuld celle = så mange dage (cell-manager tillader 0-9).
+    /// Maks dage på serveren (bruges til {max}/{antal}; cell-manager gemmer højst 9).
     pub max_days: u8,
     pub click_delay_ms: u64,
     pub click_jitter_ms: u64,
     pub max_distance: u32,
     /// Hvor mange klik-runder "fyldop" må bruge, før den giver op.
     pub fill_rounds: u8,
+    /// Maks klik pr. runde. Der stoppes tidligere, når serveren siger "max".
+    pub max_clicks: u32,
+    /// Regex for serverens besked om at cellen er fuld.
+    pub max_message: String,
     pub join_timeout_ms: u64,
     pub chat_timeout_ms: u64,
     pub max_parallel: u8,
@@ -93,11 +97,13 @@ impl Default for Settings {
             host: "mc.freakyville.dk".into(),
             port: 25565,
             version: "1.8.9".into(),
-            max_days: 9,
+            max_days: 10,
             click_delay_ms: 300,
             click_jitter_ms: 80,
             max_distance: 8,
-            fill_rounds: 3,
+            fill_rounds: 2,
+            max_clicks: 15,
+            max_message: "max tilføje".into(),
             join_timeout_ms: 30_000,
             chat_timeout_ms: 5_000,
             max_parallel: 2,

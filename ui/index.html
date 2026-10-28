@@ -143,7 +143,9 @@
     <div class="settings">
       <fieldset>
         <legend>Fornyelse</legend>
-        <label class="field">Fuld celle (dage)<input type="number" min="1" max="9" data-key="maxDays"></label>
+        <label class="field">Maks dage på serveren<input type="number" min="1" max="30" data-key="maxDays"></label>
+        <label class="field">Maks klik pr. runde<input type="number" min="1" max="100" data-key="maxClicks"></label>
+        <label class="field full">Fuld-besked fra serveren (stopper klik)<input data-key="maxMessage" placeholder="max tilføje"></label>
         <label class="field">Pause mellem klik (ms)<input type="number" min="0" data-key="clickDelayMs"></label>
         <label class="field">Tilfældig variation pr. klik (ms)<input type="number" min="0" data-key="clickJitterMs"></label>
         <label class="field">Maks. afstand til skilt (blokke)<input type="number" min="1" max="128" data-key="maxDistance"></label>
@@ -185,7 +187,7 @@
         <details class="full">
           <summary>Kommandoer</summary>
           <p class="hint mono">start · waitjoin ms · joinmacro · wait ms · chat tekst · hotbar 1-9 · use · deactivate · swing · drop · click slot [knap] [mode] · forward/back/left/right/jump/sneak/sprint ms · stopmove · sign [klik] [ms] [afstand] · checkchat [ms] kommando · validatechat contains tekst | regex mønster · <b>ceinfo [mål]</b> · <b>fyldop [runder]</b></p>
-          <p class="hint">Variabler: {celle} {konto} {max} {antal} (dage der mangler ifølge seneste /ce info). <b>fyldop</b> læser /ce info, klikker det der mangler og tjekker igen.</p>
+          <p class="hint">Variabler: {celle} {konto} {max} {antal} (dage der mangler ifølge seneste /ce info). <b>fyldop</b> klikker på skiltet, indtil serveren skriver fuld-beskeden (fx "Du kan max tilføje 10 dage ad gangen!").</p>
         </details>
         <div class="row full"><button class="btn small ghost" id="btn-reset-macros">Nulstil makroer til standard</button></div>
       </fieldset>

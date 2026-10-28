@@ -249,7 +249,7 @@ function renderRun () {
       .filter(Boolean).join(' · ')
     const pct = i.progress ? Math.round((i.progress[0] / Math.max(1, i.progress[1])) * 100) : 0
     const alertCls = i.state === 'failed' ? '' : 'warn'
-    const days = managerDays(i.after || i.before)
+    const days = managerDays(i.after || i.before) ?? (i.maxReached ? 9 : null)
 
     let sync = ''
     if (i.sync === 'done') sync = '<div class="sub">✓ cell-manager opdateret</div>'

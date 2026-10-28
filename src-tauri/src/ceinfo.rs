@@ -37,9 +37,6 @@ impl CeInfo {
         self.total_minutes().div_ceil(MIN_PER_DAY)
     }
 
-    pub fn is_full(&self, max_days: u8) -> bool {
-        self.days_rounded_up() >= u32::from(max_days)
-    }
 
     /// Hvor mange klik (1 klik = 1 dag) der mangler for at nå `max_days`.
     pub fn clicks_needed(&self, max_days: u8) -> u32 {
@@ -139,7 +136,6 @@ mod tests {
         assert_eq!(i.owner.as_deref(), Some("Thyxo"));
         assert_eq!(i.days_rounded_up(), 8);
         assert_eq!(i.clicks_needed(9), 1);
-        assert!(!i.is_full(9));
     }
 
     #[test]
@@ -152,7 +148,6 @@ mod tests {
     #[test]
     fn fuld_celle_og_udloebet() {
         let full = parse(&lines("={ a1 }=\nTid: 8 dage, 23 timer, 59 minutter"), Some("a1")).unwrap();
-        assert!(full.is_full(9));
         assert_eq!(full.manager_days(), 9);
         let zero = parse(&lines("={ a1 }=\nTid: Udløbet"), Some("a1")).unwrap();
         assert_eq!(zero.clicks_needed(9), 9);

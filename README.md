@@ -3,7 +3,7 @@
 Forny celledage på FreakyVille med ét klik – for alle dine Minecraft-accounts.
 
 CellKeeper logger hver account ind i baggrunden, klikker på cellens skilt til
-cellen er fuld (9 dage), tjekker resultatet med `/ce info`, logger ud igen og
+serveren skriver "Du kan max tilføje 10 dage ad gangen!", logger ud igen og
 opdaterer cell-manager automatisk.
 
 > **Brug på eget ansvar.** Automatisering kan være i strid med FreakyVilles
@@ -35,18 +35,18 @@ For hver valgt celle:
 
 1. Accounten logger ind på `mc.freakyville.dk` (Minecraft 1.8.9).
 2. Join-makroen kører (standard: åbn server-menuen og klik på slot 20).
-3. `/ce info <celle>` læser, hvor mange dage cellen har nu.
-4. Appen klikker på det nærmeste skilt det antal gange, der mangler
-   (1 klik = 1 dag). Ingen klik for meget.
-5. `/ce info <celle>` igen. Er cellen ikke fuld, klikker den forskellen
-   igen (højst 3 runder).
+3. `/ce info <celle>` læser dagene før køb (til loggen).
+4. Appen klikker på det nærmeste skilt, indtil serveren skriver
+   "Du kan max tilføje 10 dage ad gangen!" (højst 15 klik pr. runde, 2 runder).
+   Den besked er beviset på, at cellen er fuld.
+5. `/ce info <celle>` igen, så du kan se de nye dage.
 6. Accounten logger ud – også hvis noget gik galt.
 7. cell-manager opdateres med det antal dage, `/ce info` viste.
 
 Resultatet vises live under **Kørsel**:
 
-- ✓ **grøn**: verificeret fuld, cell-manager opdateret.
-- **!** **gul**: købet gik igennem, men cellen er ikke fuld. Du ser det
+- ✓ **grøn**: serveren sagde "max", cell-manager opdateret.
+- **!** **gul**: serveren sagde aldrig "max". Du ser det
   faktiske antal og kan selv vælge at sende det til cell-manager.
 - ✕ **rød**: fejl (fx intet skilt, login udløbet). Tryk **Prøv igen** for
   kun den celle.
@@ -115,7 +115,7 @@ wait 15000
 
 Nye kommandoer:
 
-- `fyldop [runder]` – læs `/ce info`, klik det der mangler, tjek igen.
+- `fyldop [runder]` – klik til serveren skriver fuld-beskeden (kan ændres under Indstillinger).
 - `ceinfo [mål]` – læs `/ce info` (standard: cellen).
 
 Variabler: `{celle}`, `{konto}`, `{max}`, `{antal}`

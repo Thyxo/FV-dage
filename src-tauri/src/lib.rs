@@ -47,8 +47,11 @@ fn save_settings(app: AppState, settings: Settings, api_key: Option<String>) -> 
             return Err(format!("{name}: {e}"));
         }
     }
-    if !(1..=9).contains(&settings.max_days) {
-        return Err("Fuld celle skal være 1-9 dage".into());
+    if !(1..=30).contains(&settings.max_days) {
+        return Err("Maks dage skal være 1-30".into());
+    }
+    if regex::Regex::new(&format!("(?i){}", settings.max_message)).is_err() || settings.max_message.trim().is_empty() {
+        return Err("\"Fuld-besked\" er ikke gyldig".into());
     }
     app.data.lock().unwrap().settings = settings;
     app.save_data();
@@ -338,9 +341,13 @@ fn cancel_run(app: AppState) {
 #[tauri::command]
 async fn confirm_sync(app: AppState<'_>, cell_id: String) -> Res<View> {
     let item = app.item(&cell_id).ok_or("Ukendt celle")?;
-    let info = item.after.or(item.before).ok_or("Ingen verificeret værdi")?;
+    let days = match item.after.or(item.before) {
+        Some(info) => info.manager_days(),
+        None if item.max_reached => 9,
+        None => return Err("Ingen verificeret værdi".into()),
+    };
     let a = app.inner().clone();
-    run::push_days(&a, &cell_id, info.manager_days()).await;
+    run::push_days(&a, &cell_id, days).await;
     let _ = app.sync_cells().await;
     Ok(app.view())
 }

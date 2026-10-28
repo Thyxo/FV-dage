@@ -292,17 +292,28 @@ async function cmdSign (args) {
   const pos = { x: sign.position.x, y: sign.position.y, z: sign.position.z }
   const startedAt = Date.now()
 
+  // Stop så snart serveren siger, at cellen er fuld (fx "Du kan max tilføje 10 dage").
+  const stopOn = args.stopOn ? new RegExp(args.stopOn, 'i') : null
+  const sawMax = () => Boolean(stopOn) && recentChat.some(c => c.time >= startedAt && stopOn.test(c.text))
+  let done = 0
+  let maxReached = false
+
   for (let i = 0; i < clicks; i++) {
     await b.lookAt(sign.position.offset(0.5, 0.5, 0.5), true)
     await b.activateBlock(sign)
-    send({ type: 'progress', step: 'sign', done: i + 1, total: clicks })
-    if (i < clicks - 1) await sleep(jitter(delayMs, jitterMs))
+    done = i + 1
+    send({ type: 'progress', step: 'sign', done, total: clicks })
+    await sleep(jitter(delayMs, jitterMs))
+    if (sawMax()) { maxReached = true; break }
   }
 
   // Giv serveren et øjeblik til at svare på det sidste klik.
-  await sleep(600)
+  if (!maxReached) {
+    await sleep(800)
+    maxReached = sawMax()
+  }
   const chat = recentChat.filter(c => c.time >= startedAt).map(c => c.text)
-  return { clicks, distance, position: pos, text: signText(sign), chat }
+  return { clicks: done, maxReached, distance, position: pos, text: signText(sign), chat }
 }
 
 // Sender en kommando og samler chatlinjer fra den første linje, der matcher

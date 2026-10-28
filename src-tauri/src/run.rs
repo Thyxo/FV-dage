@@ -85,6 +85,9 @@ pub struct RunItem {
     pub sync: SyncState,
     #[serde(default)]
     pub sync_error: Option<String>,
+    /// Serveren har sagt, at cellen er fuld.
+    #[serde(default)]
+    pub max_reached: bool,
     #[serde(default)]
     pub log: Vec<LogLine>,
 }
@@ -133,6 +136,7 @@ pub fn new_item(cell_id: &str, cell_name: &str, account_id: &str, account_name: 
         error: None,
         sync: SyncState::None,
         sync_error: None,
+        max_reached: false,
         log: vec![],
     }
 }
@@ -168,6 +172,7 @@ pub async fn execute(app: Arc<App>, cell_ids: Vec<String>) {
                 i.progress = None;
                 i.sync = SyncState::None;
                 i.sync_error = None;
+                i.max_reached = false;
             }
         }
     }
@@ -497,7 +502,7 @@ impl Exec {
             Step::Move { action, ms } => self.action(json!({ "action": action, "ms": ms })).await?,
             Step::Action(a) => self.action(json!({ "action": a })).await?,
             Step::Sign { clicks, delay_ms, max_distance } => {
-                let clicks = clicks.unwrap_or(u32::from(self.settings.max_days));
+                let clicks = clicks.unwrap_or(self.settings.max_clicks);
                 self.sign(clicks, delay_ms, max_distance).await?;
             }
             Step::CheckChat { timeout_ms, command } => {
@@ -535,9 +540,10 @@ impl Exec {
         Ok(())
     }
 
-    async fn sign(&mut self, clicks: u32, delay_ms: Option<u64>, max_distance: Option<u32>) -> Result<(), Fail> {
+    /// Klikker på skiltet. Returnerer `true`, hvis serveren sagde at cellen er fuld.
+    async fn sign(&mut self, clicks: u32, delay_ms: Option<u64>, max_distance: Option<u32>) -> Result<bool, Fail> {
         if clicks == 0 {
-            return Ok(());
+            return Ok(false);
         }
         self.step(&format!("Klikker på skilt ({clicks} klik)"));
         let s = &self.settings;
@@ -547,12 +553,15 @@ impl Exec {
             "delayMs": delay,
             "jitterMs": s.click_jitter_ms,
             "maxDistance": max_distance.unwrap_or(s.max_distance),
+            "stopOn": format!("(?i){}", s.max_message),
         });
         let timeout = u64::from(clicks) * (delay + s.click_jitter_ms + 2_000) + 10_000;
         let res = self.req("sign", args, timeout).await?;
         let dist = res.get("distance").and_then(Value::as_f64).unwrap_or(0.0);
         let pos = res.get("position").cloned().unwrap_or(Value::Null);
         let text = res.get("text").and_then(Value::as_str).unwrap_or_default();
+        let max_reached = res.get("maxReached").and_then(Value::as_bool).unwrap_or(false);
+        let clicks = res.get("clicks").and_then(Value::as_u64).unwrap_or(u64::from(clicks)) as u32;
         self.app.log(
             &self.cell_id,
             "info",
@@ -565,8 +574,14 @@ impl Exec {
         if dist > 6.0 {
             self.app.log(&self.cell_id, "warn", "Skiltet er langt væk. Serveren kan afvise klik over ca. 8 blokke.");
         }
-        self.app.update_item(&self.cell_id, |i| i.clicks += clicks);
-        Ok(())
+        if max_reached {
+            self.app.log(&self.cell_id, "ok", "Serveren siger, at cellen er fuld");
+        }
+        self.app.update_item(&self.cell_id, |i| {
+            i.clicks += clicks;
+            i.max_reached |= max_reached;
+        });
+        Ok(max_reached)
     }
 
     /// Sender `/ce info <mål>` og læser svaret. Prøver to gange ved timeout.
@@ -629,33 +644,31 @@ impl Exec {
         });
     }
 
-    /// Fyld op: læs dage, klik det der mangler, verificér, klik igen hvis nødvendigt.
+    /// Fyld op: klik på skiltet, indtil serveren siger at cellen er fuld
+    /// ("Du kan max tilføje 10 dage ad gangen!"). /ce info før og efter er
+    /// kun til loggen og cell-manager – serverens besked afgør resultatet.
     async fn fill(&mut self, rounds: u8) -> Result<(), Fail> {
-        let max = self.settings.max_days;
-        let mut current = self.ce_info(&self.cell_name.clone(), Slot::Before).await?;
-        if current.is_full(max) {
-            self.app.log(&self.cell_id, "ok", "Cellen er allerede fuld – ingen klik nødvendige");
-            self.app.update_item(&self.cell_id, |i| i.after = Some(current.clone()));
-            return Ok(());
+        let cell = self.cell_name.clone();
+        if let Err(Fail::Stop(m)) = self.ce_info(&cell, Slot::Before).await {
+            self.app.log(&self.cell_id, "warn", format!("Kunne ikke læse /ce info før køb: {m}"));
         }
+        let max_clicks = self.settings.max_clicks.max(1);
+        let mut full = false;
         for round in 1..=rounds {
             self.check_cancel()?;
-            self.sign(current.clicks_needed(max), None, None).await?;
-            let next = self.ce_info(&self.cell_name.clone(), Slot::After).await?;
-            if next.is_full(max) {
-                self.app.log(&self.cell_id, "ok", format!("Verificeret: {}", next.time_text));
-                return Ok(());
-            }
-            if next.total_minutes() <= current.total_minutes() {
-                return Err(Fail::Stop(
-                    "Klikkene gav ingen ekstra dage. Skiltet er måske for langt væk, købet blev afvist, eller der mangler penge."
-                        .into(),
-                ));
+            if self.sign(max_clicks, None, None).await? {
+                full = true;
+                break;
             }
             if round < rounds {
-                self.app.log(&self.cell_id, "warn", format!("Ikke fuld endnu ({}) – klikker igen", next.time_text));
+                self.app.log(&self.cell_id, "warn", format!("Ingen \"max\"-besked efter {max_clicks} klik – klikker igen"));
             }
-            current = next;
+        }
+        if !full {
+            self.app.log(&self.cell_id, "error", "Serveren sagde aldrig, at cellen er fuld");
+        }
+        if let Err(Fail::Stop(m)) = self.ce_info(&cell, Slot::After).await {
+            self.app.log(&self.cell_id, "warn", format!("Kunne ikke læse /ce info efter køb: {m}"));
         }
         Ok(())
     }
@@ -674,10 +687,12 @@ async fn finish_item(app: &Arc<App>, cell_id: &str, settings: &Settings) {
     let info = item.after.clone().or(item.before.clone());
     let max = settings.max_days;
 
-    let (state, error) = match &info {
-        Some(i) if i.is_full(max) => (ItemState::Done, None),
-        Some(i) => (ItemState::Warning, Some(format!("Kun {} efter køb (forventet {max} dage)", i.time_text))),
-        None => (ItemState::Warning, Some("Ikke verificeret: makroen kørte ingen /ce info".into())),
+    // Kun serverens "max"-besked tæller som fuld.
+    let (state, error) = if item.max_reached {
+        (ItemState::Done, None)
+    } else {
+        let now = info.as_ref().map(|i| format!(" (nu: {})", i.time_text)).unwrap_or_default();
+        (ItemState::Warning, Some(format!("Serveren bekræftede ikke, at cellen er fuld{now}. Op til {max} dage er muligt.")))
     };
 
     let remote = {
@@ -702,9 +717,9 @@ async fn finish_item(app: &Arc<App>, cell_id: &str, settings: &Settings) {
     set_account_error(app, cell_id, None);
 
     let sync = match (&info, state, remote) {
-        (None, _, _) => SyncState::None,
-        (Some(_), _, false) => SyncState::NotLinked,
-        (Some(_), ItemState::Done, true) if settings.auto_sync => SyncState::Done,
+        (None, ItemState::Warning, _) => SyncState::None,
+        (_, _, false) => SyncState::NotLinked,
+        (_, ItemState::Done, true) if settings.auto_sync => SyncState::Done,
         _ => SyncState::NeedsConfirm,
     };
 
@@ -722,7 +737,8 @@ async fn finish_item(app: &Arc<App>, cell_id: &str, settings: &Settings) {
     }
 
     if sync == SyncState::Done {
-        let days = info.map(|i| i.manager_days()).unwrap_or(0);
+        // Fuld ifølge serveren: cell-manager gemmer højst 9.
+        let days = info.map(|i| i.manager_days()).unwrap_or(9);
         push_days(app, cell_id, days).await;
     }
 }
