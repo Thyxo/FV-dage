@@ -244,7 +244,9 @@ async function cmdAction (args) {
   if (action === 'click') {
     const slot = Number(args.slot)
     if (!Number.isInteger(slot)) throw new Error('click kræver et slot-nummer')
-    await b.clickWindow(slot, Number(args.button) || 0, Number(args.mode) || 0)
+    // Vent ikke på serverens kvittering: FreakyVilles menu sender en videre
+    // til kø/fængsel uden at svare, og så ville klikket fejle efter 5 sek.
+    b.clickWindow(slot, Number(args.button) || 0, Number(args.mode) || 0).catch(() => {})
     return {}
   }
   throw new Error(`Ukendt handling: ${action}`)

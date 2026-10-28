@@ -110,7 +110,7 @@ Standard-join-makro:
 use
 wait 1000
 click 20
-wait 5000
+wait 15000
 ```
 
 Nye kommandoer:

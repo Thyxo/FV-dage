@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ceinfo::CeInfo;
 
-pub const DEFAULT_JOIN_MACRO: &str = "# Åbn server-menuen og gå ind i fængslet\nuse\nwait 1000\nclick 20\nwait 5000";
+pub const DEFAULT_JOIN_MACRO: &str = "# Åbn server-menuen og gå ind i fængslet\nuse\nwait 1000\nclick 20\nwait 15000";
 
 pub const DEFAULT_RENEW_MACRO: &str = "# Log ind på serveren\nstart\nwaitjoin 30000\njoinmacro\n# Køb dage til cellen er fuld, og tjek med /ce info\nfyldop";
 
