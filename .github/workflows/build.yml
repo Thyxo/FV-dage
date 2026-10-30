@@ -7,6 +7,9 @@ on:
       - "**.md"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -39,3 +42,19 @@ jobs:
           name: CellKeeper-windows
           path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
+
+      # Hvert push til main bliver en ny release med installeren vedhæftet.
+      - name: Lav release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+          notes=$(git log -1 --pretty=%B | grep -v -e '^Co-Authored-By:' -e '^Claude-Session:')
+          gh release create "$tag" src-tauri/target/release/bundle/nsis/*.exe \
+            --target "$GITHUB_SHA" \
+            --title "CellKeeper ${version} (build ${GITHUB_RUN_NUMBER})" \
+            --notes "$notes" \
+            --latest

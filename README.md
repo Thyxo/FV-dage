@@ -15,7 +15,10 @@ opdaterer cell-manager automatisk.
 
 ## Kom i gang
 
-1. Hent installeren (`CellKeeper_x.y.z_x64-setup.exe`) og kør den.
+1. Hent den nyeste installer under
+   [Releases](https://github.com/Thyxo/FV-dage/releases/latest)
+   (`CellKeeper_x.y.z_x64-setup.exe`) og kør den. Ny version: installér
+   bare oven på den gamle.
    Windows kan vise "Windows beskyttede din pc", fordi appen ikke er
    kodesigneret. Tryk **Flere oplysninger → Kør alligevel**.
 2. Åbn **Accounts → + Tilføj account → Start login**.
@@ -155,7 +158,8 @@ npx @tauri-apps/cli@2 build              # installer i src-tauri/target/release/
 ```
 
 GitHub Actions bygger Windows-installeren ved hvert push
-(`.github/workflows/build.yml`). Den ligger som artefakt på kørslen.
+(`.github/workflows/build.yml`). Push til `main` laver automatisk en ny
+release med installeren. Andre branches får den kun som artefakt på kørslen.
 
 Struktur:
 
