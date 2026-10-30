@@ -553,7 +553,7 @@ impl Exec {
             "delayMs": delay,
             "jitterMs": s.click_jitter_ms,
             "maxDistance": max_distance.unwrap_or(s.max_distance),
-            "stopOn": format!("(?i){}", s.max_message),
+            "stopOn": s.max_message.clone(),
         });
         let timeout = u64::from(clicks) * (delay + s.click_jitter_ms + 2_000) + 10_000;
         let res = self.req("sign", args, timeout).await?;

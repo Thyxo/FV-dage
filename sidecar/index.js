@@ -277,6 +277,16 @@ function signText (block) {
 // activateBlock sender i 1.8 pakken "block_place" (Player Block Placement).
 // Der er intet line-of-sight-tjek, så skilte bag en væg virker, så længe
 // serveren accepterer afstanden (vanilla 1.8: under 8 blokke).
+// JS kender ikke Rusts inline-flag "(?i)". Fjern det, og fald tilbage til
+// bogstavelig tekst, hvis mønsteret ikke er gyldigt i JS.
+function mkRegex (src) {
+  if (!src) return null
+  const clean = String(src).replace(/^\(\?i\)/, '')
+  try { return new RegExp(clean, 'i') } catch {
+    return new RegExp(clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+  }
+}
+
 async function cmdSign (args) {
   const b = requireBot()
   const clicks = Math.floor(clamp(args.clicks, 9, 0, 1000))
@@ -293,7 +303,7 @@ async function cmdSign (args) {
   const startedAt = Date.now()
 
   // Stop så snart serveren siger, at cellen er fuld (fx "Du kan max tilføje 10 dage").
-  const stopOn = args.stopOn ? new RegExp(args.stopOn, 'i') : null
+  const stopOn = mkRegex(args.stopOn)
   const sawMax = () => Boolean(stopOn) && recentChat.some(c => c.time >= startedAt && stopOn.test(c.text))
   let done = 0
   let maxReached = false
@@ -325,8 +335,8 @@ function cmdCheckChat (args) {
   if (!command) throw new Error('checkchat kræver en kommando')
   const timeoutMs = clamp(args.timeoutMs, 5000, 500, 120000)
   const settleMs = clamp(args.settleMs, 800, 100, 10000)
-  const start = args.start ? new RegExp(args.start, 'i') : null
-  const until = args.until ? new RegExp(args.until, 'i') : null
+  const start = mkRegex(args.start)
+  const until = mkRegex(args.until)
 
   return new Promise((resolve, reject) => {
     const lines = []
