@@ -28,6 +28,13 @@ opdaterer cell-manager automatisk.
    til den account, der har samme Minecraft-navn.
 5. Tryk **Tilføj dage**.
 
+**Kun dine egne celler:** Øverst under **Celler** vælger du, hvad der vises:
+
+- **Mine celler** (standard): kun celler, hvis ejer er en af dine accounts i appen.
+- **Alle celler**: alt fra cell-manager.
+- **Skjulte**: celler du selv har skjult med **Skjul**. Tryk **Vis** for at få
+  dem tilbage. Skjulte celler bliver aldrig valgt til en kørsel.
+
 > **Husk:** Accounten skal være **logget ud af Minecraft** (du må ikke spille
 > på den samtidig), og den skal være logget ud stående **inde i sin celle tæt
 > på skiltet**. Det er dér, den dukker op, når appen logger ind.

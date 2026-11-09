@@ -283,6 +283,7 @@ impl App {
                         block: r.block.clone(),
                         days_left: days,
                         removed_remote: false,
+                        hidden: false,
                         last_renewed: None,
                         last_info: None,
                         last_info_at: None,

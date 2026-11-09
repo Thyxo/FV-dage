@@ -51,6 +51,9 @@ pub struct Cell {
     pub days_left: Option<u8>,
     #[serde(default)]
     pub removed_remote: bool,
+    /// Skjult af brugeren (fx en andens celle). Overlever synkronisering.
+    #[serde(default)]
+    pub hidden: bool,
     #[serde(default)]
     pub last_renewed: Option<DateTime<Utc>>,
     /// Seneste /ce info-aflæsning.

@@ -220,3 +220,4 @@ summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   fieldset { grid-template-columns: minmax(0, 1fr); }
   .row-actions .btn { padding: 4px 8px; }
 }
+#cell-mode { width: auto; min-width: 0; padding: 4px 8px; font-size: 12.5px; }

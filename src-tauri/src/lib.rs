@@ -253,6 +253,7 @@ fn add_local_cell(app: AppState, cell_name: String, account_name: String) -> Res
             block: String::new(),
             days_left: None,
             removed_remote: false,
+            hidden: false,
             last_renewed: None,
             last_info: None,
             last_info_at: None,
@@ -271,6 +272,18 @@ fn remove_cell(app: AppState, id: String) -> Res<View> {
             return Err("Cellen hører til cell-manager. Slet den dér i stedet.".into());
         }
         data.cells.retain(|c| c.id != id);
+    }
+    app.save_data();
+    Ok(app.view())
+}
+
+#[tauri::command]
+fn set_cells_hidden(app: AppState, ids: Vec<String>, hidden: bool) -> Res<View> {
+    {
+        let mut data = app.data.lock().unwrap();
+        for c in data.cells.iter_mut().filter(|c| ids.contains(&c.id)) {
+            c.hidden = hidden;
+        }
     }
     app.save_data();
     Ok(app.view())
@@ -546,6 +559,7 @@ pub fn run() {
             remove_account,
             add_local_cell,
             remove_cell,
+            set_cells_hidden,
             start_run,
             retry_items,
             cancel_run,

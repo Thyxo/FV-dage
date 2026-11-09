@@ -11,6 +11,9 @@ const selected = new Set()
 const knownCells = new Set()
 let tab = 'cells'
 let filter = ''
+// Hvilke celler der vises: mine (har en account i appen), alle, eller skjulte.
+let cellMode = 'mine'
+try { cellMode = localStorage.getItem('cellMode') || 'mine' } catch {}
 let loginFor = null
 let loginBusy = false
 let codeUrl = ''
@@ -81,14 +84,16 @@ function syncSelection () {
   for (const c of view.cells) {
     if (!knownCells.has(c.id)) {
       knownCells.add(c.id)
-      if (canRun(c) && needsDays(c)) selected.add(c.id)
+      if (canRun(c) && !c.hidden && needsDays(c)) selected.add(c.id)
     }
-    if (!canRun(c)) selected.delete(c.id)
+    if (!canRun(c) || c.hidden) selected.delete(c.id)
   }
   for (const id of [...selected]) if (!ids.has(id)) selected.delete(id)
 }
 
-const visibleCells = () => view.cells.filter((c) => !filter || c.accountId === filter)
+const isMine = (c) => Boolean(c.accountId)
+const inMode = (c, mode) => mode === 'hidden' ? c.hidden : !c.hidden && (mode === 'all' || isMine(c))
+const visibleCells = () => view.cells.filter((c) => inMode(c, cellMode) && (!filter || c.accountId === filter))
 const chosenIds = () => visibleCells().filter((c) => selected.has(c.id)).map((c) => c.id)
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -98,6 +103,7 @@ function render () {
   syncSelection()
   renderTop()
   renderFilter()
+  renderCellMode()
   renderCells()
   renderAccounts()
   renderRun()
@@ -133,6 +139,15 @@ function renderFilter () {
   sel.value = filter
 }
 
+function renderCellMode () {
+  const sel = $('#cell-mode')
+  const labels = { mine: 'Mine celler', all: 'Alle celler', hidden: 'Skjulte' }
+  for (const opt of sel.options) {
+    opt.textContent = `${labels[opt.value]} (${view.cells.filter((c) => inMode(c, opt.value)).length})`
+  }
+  sel.value = cellMode
+}
+
 function renderRunbar () {
   const n = chosenIds().length
   $('#run-hint').textContent = view.runActive ? 'Kørsel i gang …' : n ? `${n} celle(r) valgt` : 'Vælg celler nedenfor'
@@ -145,7 +160,14 @@ function renderCells () {
   const max = view.settings.maxDays
   const cells = visibleCells()
   if (!cells.length) {
-    $('#cells').innerHTML = '<div class="empty">Ingen celler endnu. Tjek cell-manager-adressen under Indstillinger, eller tilføj en lokal celle.</div>'
+    const empty = !view.cells.length
+      ? 'Ingen celler endnu. Tjek cell-manager-adressen under Indstillinger, eller tilføj en lokal celle.'
+      : cellMode === 'hidden'
+        ? 'Ingen skjulte celler.'
+        : cellMode === 'mine'
+          ? 'Ingen af cellerne hører til dine accounts. Tilføj dine accounts under Accounts, eller vælg "Alle celler".'
+          : 'Alle celler er skjult. Vælg "Skjulte" for at vise dem igen.'
+    $('#cells').innerHTML = `<div class="empty">${esc(empty)}</div>`
     return
   }
   $('#cells').innerHTML = cells.map((c) => {
@@ -169,6 +191,7 @@ function renderCells () {
         <div class="daybar ${cls}">${bar}</div>
       </div>
       <span class="days ${cls}" title="Dage tilbage ifølge cell-manager">${d ?? '?'}</span>
+      <button class="btn small ghost" data-hide-cell="${esc(c.id)}" title="${c.hidden ? 'Vis cellen igen' : 'Skjul cellen (fx hvis den ikke er din)'}">${c.hidden ? 'Vis' : 'Skjul'}</button>
       ${removable ? `<button class="btn small ghost" data-remove-cell="${esc(c.id)}" title="Fjern celle">✕</button>` : ''}
     </label>`
   }).join('')
@@ -318,10 +341,23 @@ $('#cells').addEventListener('change', (e) => {
 })
 
 $('#cells').addEventListener('click', async (e) => {
+  const hide = e.target.closest('[data-hide-cell]')
+  if (hide) {
+    e.preventDefault()
+    const c = view.cells.find((x) => x.id === hide.dataset.hideCell)
+    if (c) setView(await call('set_cells_hidden', { ids: [c.id], hidden: !c.hidden }))
+    return
+  }
   const btn = e.target.closest('[data-remove-cell]')
   if (!btn) return
   e.preventDefault()
   setView(await call('remove_cell', { id: btn.dataset.removeCell }))
+})
+
+$('#cell-mode').addEventListener('change', (e) => {
+  cellMode = e.target.value
+  try { localStorage.setItem('cellMode', cellMode) } catch {}
+  render()
 })
 
 $('#sel-all').addEventListener('click', () => { visibleCells().filter(canRun).forEach((c) => selected.add(c.id)); render() })
